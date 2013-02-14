@@ -45,10 +45,10 @@ Author: Martin Burtscher <burtscher@txstate.edu>
 
 static int read_input(char *filename, float *posx, float *posy)
 {
-  register int cnt;
+  int cnt;
   int i1, cities;
   float i2, i3;
-  register FILE *f;
+  FILE *f;
 
   /* open input text file */
   f = fopen(filename, "r+t");
@@ -77,10 +77,10 @@ static int read_input(char *filename, float *posx, float *posy)
 
 int main(int argc, char *argv[])
 {
-  register int i, j, cities, iter, samples, from, to, len, length;
-  register float dx, dy;
+  int i, j, cities, iter, samples, from, to, len, length;
+  float dx, dy;
   float posx[MAXCITIES], posy[MAXCITIES];
-  register unsigned short tmp;
+  unsigned short tmp;
   unsigned short tour[MAXCITIES + 1];
   struct timeval start, end;
 
