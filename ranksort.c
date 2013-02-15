@@ -38,6 +38,7 @@ Author: Martin Burtscher <burtscher@txstate.edu>
 #include <stdlib.h>
 #include <stdio.h>
 #include <sys/time.h>
+#include <mpi.h>
 
 int main(int argc, char *argv[])
 {
@@ -45,7 +46,7 @@ int main(int argc, char *argv[])
   int *a, *b;
   struct timeval start, end;
 
-  printf("RankSort v1.0\n");
+  printf("RankSort MPI OuterLoop\n");
 
   /* check command line */
   if (argc != 2) {fprintf(stderr, "usage: %s number_of_elements\n", argv[0]); exit(-1);}
@@ -56,7 +57,17 @@ int main(int argc, char *argv[])
   a = (int *)malloc(size * sizeof(int));
   b = (int *)malloc(size * sizeof(int));
   if ((a == NULL) || (b == NULL)) {fprintf(stderr, "could not allocate arrays\n"); exit(-1);}
+  
 
+  /*Initializing MPI*/
+  int comm_sz;   // Number of process
+  int my_rank;   // Process rank
+
+  MPI_Init(NULL,NULL);
+  MPI_Comm_size(MPI_COMM_WORLD, &comm-sz);
+  MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
+
+  
   /* generate input */
   for (i = 0; i < size; i++) a[i] = i;
   printf("sorting %d values\n", size);
@@ -82,6 +93,10 @@ int main(int argc, char *argv[])
   i = 1;
   while ((i < size) && (b[i - 1] < b[i])) i++;
   if (i < size) printf("NOT sorted\n\n"); else printf("sorted\n\n");
+
+
+  /*MPI_Finalize*/
+  MPI_Finalize();
 
   free(a);
   free(b);
