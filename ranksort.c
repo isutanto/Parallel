@@ -41,8 +41,8 @@ Author: Martin Burtscher <burtscher@txstate.edu>
 
 int main(int argc, char *argv[])
 {
-  register int i, j, cnt, val, size = 0;
-  register int *a, *b;
+  int i, j, cnt, val, size = 0;
+  int *a, *b;
   struct timeval start, end;
 
   printf("RankSort v1.0\n");
