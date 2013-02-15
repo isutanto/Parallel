@@ -46,32 +46,6 @@ int main(int argc, char *argv[])
   int *a, *b;
   struct timeval start, end;
 
-  if (my_rank == 0)
-    printf("RankSort MPI OuterLoop\n");
-
-  /* check command line */
-  if (argc != 2) 
-  {
-    if(my_rank == 0)
-      fprintf(stderr, "usage: %s number_of_elements\n", argv[0]); exit(-1);
-  }
-  size = atoi(argv[1]);
-  if (size < 1) 
-  {
-    if(my_rank == 0)
-      fprintf(stderr, "number of elements must be at least 1\n"); exit(-1);
-  }
-
-  /* allocate arrays */
-  a = (int *)malloc(size * sizeof(int));
-  b = (int *)malloc(size * sizeof(int));
-  if ((a == NULL) || (b == NULL)) 
-  {
-    if(my_rank == 0)
-      fprintf(stderr, "could not allocate arrays\n"); exit(-1);
-  }
-  
-
   /*Initializing MPI*/
   int comm_sz;   // Number of process
   int my_rank;   // Process rank
@@ -80,6 +54,38 @@ int main(int argc, char *argv[])
   MPI_Comm_size(MPI_COMM_WORLD, &comm_sz);
   MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
 
+
+  if (my_rank == 0)
+    printf("RankSort MPI OuterLoop\n");
+
+  /* check command line */
+  if (argc != 2) 
+  {
+    if(my_rank == 0)
+      fprintf(stderr, "usage: %s number_of_elements\n", argv[0]); 
+    MPI_Finalize();
+    exit(-1);
+  }
+  size = atoi(argv[1]);
+  if (size < 1) 
+  {
+    if(my_rank == 0)
+      fprintf(stderr, "number of elements must be at least 1\n"); 
+    MPI_Finalize();
+    exit(-1);
+  }
+
+  /* allocate arrays */
+  a = (int *)malloc(size * sizeof(int));
+  b = (int *)malloc(size * sizeof(int));
+  if ((a == NULL) || (b == NULL)) 
+  {
+    if(my_rank == 0)
+      fprintf(stderr, "could not allocate arrays\n"); 
+    MPI_Finalize();
+    exit(-1);
+  }
+  
   
   /* generate input */
   for (i = 0; i < size; i++) a[i] = i;
@@ -87,6 +93,10 @@ int main(int argc, char *argv[])
     printf("Message from process %d sorting %d values\n", my_rank, size);
   else
     printf("Process %d not doing anything\n",my_rank);
+
+
+  /* Barrier */
+  MPI_Barrier(MPI_COMM_WORLD);
 
   /* start time */
   gettimeofday(&start, NULL);
@@ -103,13 +113,16 @@ int main(int argc, char *argv[])
 
   /* end time */
   gettimeofday(&end, NULL);
-  printf("runtime: %.4lf s\n", end.tv_sec + end.tv_usec / 1000000.0 - start.tv_sec - start.tv_usec / 1000000.0);
+  if(my_rank == 0)
+    printf("runtime: %.4lf s\n", end.tv_sec + end.tv_usec / 1000000.0 - start.tv_sec - start.tv_usec / 1000000.0);
 
   /* verify result */
   i = 1;
-  while ((i < size) && (b[i - 1] < b[i])) i++;
-  if (i < size) printf("NOT sorted\n\n"); else printf("sorted\n\n");
-
+  if(my_rank == 0)
+  {
+    while ((i < size) && (b[i - 1] < b[i])) i++;
+    if (i < size) printf("NOT sorted\n\n"); else printf("sorted\n\n");
+  }
 
   /*MPI_Finalize*/
   MPI_Finalize();
