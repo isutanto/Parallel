@@ -70,7 +70,10 @@ int main(int argc, char *argv[])
   
   /* generate input */
   for (i = 0; i < size; i++) a[i] = i;
-  printf("sorting %d values\n", size);
+  if(my_rank == 0)
+    printf("Message from process %d sorting %d values\n", my_rank, size);
+  else
+    printf("Process %d not doing anything\n",my_rank);
 
   /* start time */
   gettimeofday(&start, NULL);
