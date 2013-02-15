@@ -46,17 +46,30 @@ int main(int argc, char *argv[])
   int *a, *b;
   struct timeval start, end;
 
-  printf("RankSort MPI OuterLoop\n");
+  if (my_rank == 0)
+    printf("RankSort MPI OuterLoop\n");
 
   /* check command line */
-  if (argc != 2) {fprintf(stderr, "usage: %s number_of_elements\n", argv[0]); exit(-1);}
+  if (argc != 2) 
+  {
+    if(my_rank == 0)
+      fprintf(stderr, "usage: %s number_of_elements\n", argv[0]); exit(-1);
+  }
   size = atoi(argv[1]);
-  if (size < 1) {fprintf(stderr, "number of elements must be at least 1\n"); exit(-1);}
+  if (size < 1) 
+  {
+    if(my_rank == 0)
+      fprintf(stderr, "number of elements must be at least 1\n"); exit(-1);
+  }
 
   /* allocate arrays */
   a = (int *)malloc(size * sizeof(int));
   b = (int *)malloc(size * sizeof(int));
-  if ((a == NULL) || (b == NULL)) {fprintf(stderr, "could not allocate arrays\n"); exit(-1);}
+  if ((a == NULL) || (b == NULL)) 
+  {
+    if(my_rank == 0)
+      fprintf(stderr, "could not allocate arrays\n"); exit(-1);
+  }
   
 
   /*Initializing MPI*/
