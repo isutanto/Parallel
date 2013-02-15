@@ -45,6 +45,9 @@ int main(int argc, char *argv[])
   int i, j, cnt, val, size = 0;
   int *a, *b;
   struct timeval start, end;
+  float local_time, total_time;
+
+  total_time = 0;
 
   /*Initializing MPI*/
   int comm_sz;   // Number of process
@@ -53,6 +56,8 @@ int main(int argc, char *argv[])
   MPI_Init(NULL,NULL);
   MPI_Comm_size(MPI_COMM_WORLD, &comm_sz);
   MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
+
+  
 
 
   if (my_rank == 0)
@@ -86,14 +91,17 @@ int main(int argc, char *argv[])
     exit(-1);
   }
   
+  int my_start = (long long) my_rank * size / comm_sz;
+  int my_end = (long long) (my_rank + 1) * size / comm_sz;
   
   /* generate input */
-  for (i = 0; i < size; i++) a[i] = i;
+  for (i = 0; i < size; i++)
+  {
+    //    printf("process %d is here to generate input\n",my_rank);
+    a[i] = i;
+  }
   if(my_rank == 0)
-    printf("Message from process %d sorting %d values\n", my_rank, size);
-  else
-    printf("Process %d not doing anything\n",my_rank);
-
+    printf("sorting %d values\n", size);
 
   /* Barrier */
   MPI_Barrier(MPI_COMM_WORLD);
@@ -113,8 +121,17 @@ int main(int argc, char *argv[])
 
   /* end time */
   gettimeofday(&end, NULL);
-  if(my_rank == 0)
-    printf("runtime: %.4lf s\n", end.tv_sec + end.tv_usec / 1000000.0 - start.tv_sec - start.tv_usec / 1000000.0);
+  local_time = (end.tv_sec + end.tv_usec / 1000000.0)-(start.tv_sec - start.tv_usec / 1000000);
+  //printf("process %d runtime %.4f s\n",my_rank,local_time);
+  if(my_rank != 0)
+    { 
+      MPI_Allreduce(&local_time,&total_time,1, MPI_FLOAT, MPI_SUM, MPI_COMM_WORLD);
+    }
+  else
+    {
+      MPI_Allreduce(&local_time,&total_time,1,MPI_FLOAT,MPI_SUM, MPI_COMM_WORLD);
+      printf("runtime: %.4lf s\n",total_time);// end.tv_sec + end.tv_usec / 1000000.0 - start.tv_sec - start.tv_usec / 1000000.0);
+    }
 
   /* verify result */
   i = 1;
