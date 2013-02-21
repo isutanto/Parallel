@@ -42,8 +42,8 @@ Author: Martin Burtscher <burtscher@txstate.edu>
 
 int main(int argc, char *argv[])
 {
-  int i, j, cnt, val, size = 0;
-  int *a, *b;
+  int i, size = 0;
+  int *a, *b, *c;
   struct timeval start, end;
   float local_time, total_time;
 
@@ -83,6 +83,7 @@ int main(int argc, char *argv[])
   /* allocate arrays */
   a = (int *)malloc(size * sizeof(int));
   b = (int *)malloc(size * sizeof(int));
+  c = (int *)malloc(size * sizeof(int));
   if ((a == NULL) || (b == NULL)) 
   {
     if(my_rank == 0)
@@ -99,6 +100,8 @@ int main(int argc, char *argv[])
   {
     //    printf("process %d is here to generate input\n",my_rank);
     a[i] = i;
+    b[i] = 0; // initializing array b
+    c[i] = 0;
   }
   if(my_rank == 0)
     printf("sorting %d values\n", size);
@@ -110,24 +113,29 @@ int main(int argc, char *argv[])
   gettimeofday(&start, NULL);
 
   /* sort the values */
-  for (i = 0; i < size; i++) {
-    cnt = 0;
-    val = a[i];
+  for (i = my_start; i < my_end; i++) {//(i = 0; i < size; i++) {
+    int cnt = 0;
+    int val = a[i];
+    int j;
     for (j = 0; j < size; j++) {
       if (val > a[j]) cnt++;
     }
     b[cnt] = val;
   }
 
+  /* putting all part of the array back together */
+  MPI_Reduce(b,c,size,MPI_INT, MPI_SUM,0,MPI_COMM_WORLD);
+
   /* end time */
   gettimeofday(&end, NULL);
   local_time = (end.tv_sec + end.tv_usec / 1000000.0)-(start.tv_sec - start.tv_usec / 1000000);
-  //printf("process %d runtime %.4f s\n",my_rank,local_time);
+ 
+
   if(my_rank != 0)
     { 
       MPI_Allreduce(&local_time,&total_time,1, MPI_FLOAT, MPI_SUM, MPI_COMM_WORLD);
     }
-  else
+   else
     {
       MPI_Allreduce(&local_time,&total_time,1,MPI_FLOAT,MPI_SUM, MPI_COMM_WORLD);
       printf("runtime: %.4lf s\n",total_time);// end.tv_sec + end.tv_usec / 1000000.0 - start.tv_sec - start.tv_usec / 1000000.0);
@@ -137,7 +145,12 @@ int main(int argc, char *argv[])
   i = 1;
   if(my_rank == 0)
   {
-    while ((i < size) && (b[i - 1] < b[i])) i++;
+    // check result of the sort
+    /* int u;
+    for (u =0; u < size; u++)
+      {
+      printf("u[%d] = %d\n",u,c[u]);}*/
+    while ((i < size) && (c[i - 1] < c[i])) i++;
     if (i < size) printf("NOT sorted\n\n"); else printf("sorted\n\n");
   }
 
@@ -146,6 +159,7 @@ int main(int argc, char *argv[])
 
   free(a);
   free(b);
+  free(c);
   return 0;
 }
 
