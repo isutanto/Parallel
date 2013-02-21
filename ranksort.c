@@ -42,12 +42,13 @@ Author: Martin Burtscher <burtscher@txstate.edu>
 
 int main(int argc, char *argv[])
 {
-  int i, size = 0;
+  int i,cnt, size = 0;
   int *a, *b, *c;
   struct timeval start, end;
   float local_time, total_time;
 
   total_time = 0;
+  cnt = 0;
 
   /*Initializing MPI*/
   int comm_sz;   // Number of process
@@ -99,7 +100,7 @@ int main(int argc, char *argv[])
   for (i = 0; i < size; i++)
   {
     //    printf("process %d is here to generate input\n",my_rank);
-    a[i] = i;
+    a[i] = -((i & 2) - 1) * i;
     b[i] = 0; // initializing array b
     c[i] = 0;
   }
@@ -113,14 +114,17 @@ int main(int argc, char *argv[])
   gettimeofday(&start, NULL);
 
   /* sort the values */
-  for (i = my_start; i < my_end; i++) {//(i = 0; i < size; i++) {
-    int cnt = 0;
+  for (i = 0; i < size; i++) {
+    int local_cnt = 0;
     int val = a[i];
     int j;
-    for (j = 0; j < size; j++) {
-      if (val > a[j]) cnt++;
+    for (j = my_start; j < my_end; j++) {
+      if (val > a[j]) c[i]++;
     }
-    b[cnt] = val;
+    
+    MPI_Reduce(&c[i],&cnt,1,MPI_INT,MPI_SUM,0,MPI_COMM_WORLD);
+    if(my_rank == 0)
+      b[cnt] = val;
   }
 
   /* putting all part of the array back together */
@@ -149,7 +153,7 @@ int main(int argc, char *argv[])
     /* int u;
     for (u =0; u < size; u++)
       {
-      printf("u[%d] = %d\n",u,c[u]);}*/
+      printf("c[%d] = %d\n",u,c[u]);}*/
     while ((i < size) && (c[i - 1] < c[i])) i++;
     if (i < size) printf("NOT sorted\n\n"); else printf("sorted\n\n");
   }
