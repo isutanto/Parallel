@@ -40,6 +40,7 @@ Author: Martin Burtscher <burtscher@txstate.edu>
 #include <math.h>
 #include <limits.h>
 #include <sys/time.h>
+#include <mpi.h>
 
 #define MAXCITIES 1296
 
@@ -83,25 +84,65 @@ int main(int argc, char *argv[])
   unsigned short tmp;
   unsigned short tour[MAXCITIES + 1];
   struct timeval start, end;
+  
+  float local_time, total_time;
 
-  printf("TSP v1.0\n");
+  total_time = 0;
+
+  /*Initializing MPI*/
+  int comm_sz;   // Number of process
+  int my_rank;   // Process rank
+
+  MPI_Init(NULL,NULL);
+  MPI_Comm_size(MPI_COMM_WORLD, &comm_sz);
+  MPI_Comm_rank(MPI_COMM_WORLD, &my_rank);
+
+  if (my_rank == 0)
+    printf("TSP w/ MPI v1.0\n");
 
   /* check command line */
-  if (argc != 3) {fprintf(stderr, "usage: %s input_file_name number_of_samples\n", argv[0]); exit(-1);}
-  cities = read_input(argv[1], posx, posy);
-  samples = atoi(argv[2]);
-  if (samples < 1) {fprintf(stderr, "number of samples must be at least 1\n"); exit(-1);}
-  printf("%d cities and %d samples (%s)\n", cities, samples, argv[1]);
+  if (argc != 3) 
+    {
+      if (my_rank == 0)
+	fprintf(stderr, "usage: %s input_file_name number_of_samples\n", argv[0]); 
+      MPI_Finalize();
+      exit(-1);
+    }
+  
+  if(my_rank ==0)
+    {					       
+      cities = read_input(argv[1], posx, posy);
+      samples = atoi(argv[2]);
+
+      MPI_Bcast(posx, MAXCITIES ,MPI_FLOAT ,0,MPI_COMM_WORLD);
+      MPI_Bcast(posy, MAXCITIES,MPI_FLOAT,0,MPI_COMM_WORLD);
+      MPI_Bcast(&cities,1,MPI_INT,0, MPI_COMM_WORLD);
+    }
+
+  if (samples < 1) 
+    {
+      if(my_rank ==0)
+	fprintf(stderr, "number of samples must be at least 1\n"); 
+      MPI_Finalize();
+      exit(-1);
+    }
+  
+  if(my_rank == 0)
+    printf("%d cities and %d samples (%s)\n", cities, samples, argv[1]);
 
   /* initialize */
   tour[cities] = 0;
   length = INT_MAX;
+  int final_length = 0;
+
+  MPI_Barrier(MPI_COMM_WORLD);
 
   /* start time */
   gettimeofday(&start, NULL);
 
-  /* iterate number of sample times */
-  for (iter = 1; iter <= samples; iter++) {
+  /* iterate number of sample times with cyclic distribution */
+  for (iter = my_rank+1; iter <= samples; iter+=comm_sz)//1; iter <= samples; iter++)
+ {
     /* generate a random tour */
     srand(iter);
     for (i = 1; i < cities; i++) tour[i] = i;
@@ -126,17 +167,35 @@ int main(int argc, char *argv[])
     /* check if new shortest tour */
     if (length > len) {
       length = len;
-      printf("iteration %d: %d\n", iter, len);
+      //if (my_rank == 0)
+	//printf("iteration %d: %d\n", iter, len);
     }
   }
 
+  /* global minimum for length */
+  MPI_Reduce(&length, &final_length,1,MPI_INT,MPI_MIN,0,MPI_COMM_WORLD);
+
   /* end time */
   gettimeofday(&end, NULL);
-  printf("runtime: %.4lf s\n", end.tv_sec + end.tv_usec / 1000000.0 - start.tv_sec - start.tv_usec / 1000000.0);
+  
+  local_time = end.tv_sec + end.tv_usec / 1000000 - start.tv_sec - start.tv_usec / 1000000;
+
+  MPI_Allreduce(&local_time,&total_time,1,MPI_FLOAT,MPI_SUM, MPI_COMM_WORLD);
+  //printf("runtime: %.4lf s\n",end.tv_sec + end.tv_usec / 1000000.0 - start.tv_sec - start.tv_usec / 1000000.0);
+
+
+
+
+
 
   /* output result */
-  printf("length of shortest found tour: %d\n\n", length);
+  if(my_rank == 0)
+    {
+      printf("runtime: %.4lf s\n",total_time);
+      printf("length of shortest found tour: %d\n\n",final_length);
+    }
 
+  MPI_Finalize();
   return 0;
 }
 
